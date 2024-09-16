@@ -9,6 +9,44 @@ import winreg
 import pycurl
 from io import BytesIO
 import json
+from PIL import Image, ImageTk
+import os 
+
+def download_and_save_icon(url, save_path):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        img_data = Image.open(BytesIO(response.content))
+        img_data = img_data.resize((32, 32), Image.Resampling.LANCZOS)
+        img_data.save(save_path, format="PNG")
+        print(f"Icon đã được tải và lưu tại {save_path}")
+    except Exception as e:
+        print(f"Không thể tải và lưu icon: {e}")
+
+def set_icon(window, icon_path):
+    try:
+        icon = ImageTk.PhotoImage(file=icon_path)
+        window.iconphoto(True, icon)
+        window.icon = icon
+        print("Icon đã được thiết lập thành công.")
+    except Exception as e:
+        print(f"Không thể thiết lập icon: {e}")
+
+def set_icon_from_url(window, url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Kiểm tra lỗi HTTP
+        img_data = Image.open(BytesIO(response.content))
+        img_data = img_data.resize((32, 32), Image.Resampling.LANCZOS)  # Điều chỉnh kích thước và sử dụng LANCZOS để giảm thiểu mất chất lượng
+        icon = ImageTk.PhotoImage(img_data)
+        window.iconphoto(True, icon)  # Sử dụng True để áp dụng cho tất cả các cửa sổ con
+        # Lưu trữ tham chiếu đến icon để tránh bị thu gom bởi garbage collector
+        window.icon = icon
+        print("Icon đã được thiết lập thành công.")
+    except Exception as e:
+        print(f"Không thể tải icon: {e}")
+        # Nếu không thể tải icon, chúng ta sẽ sử dụng icon mặc định hoặc không làm gì cả
+
 
 # Khai báo biến toàn cục
 total_proxies = 0
@@ -163,7 +201,19 @@ def remove_duplicates():
 root = tk.Tk()
 root.title("TOOL BESTPROXY.VN")
 root.configure(bg="#f0f0f0")
-root.geometry("1200x600")
+root.geometry("1000x800")
+
+# Thiết lập icon
+icon_url = "https://raw.githubusercontent.com/nvd2710/BestNet-Logo/main/bestclone4.png"
+icon_path = "bestproxy_icon.png"
+
+if not os.path.exists(icon_path):
+    download_and_save_icon(icon_url, icon_path)
+
+if os.path.exists(icon_path):
+    set_icon(root, icon_path)
+else:
+    print("Không tìm thấy file icon.")
 
 # Cấu hình style cho Notebook và Tabs
 style = ttk.Style()
@@ -180,18 +230,20 @@ tab2 = ttk.Frame(notebook)
 tab3 = ttk.Frame(notebook)
 tab4 = ttk.Frame(notebook)
 tab5 = ttk.Frame(notebook)
+tab6 = ttk.Frame(notebook)  # Tab mới cho Công Cụ Xử Lý Chuỗi
 
 notebook.add(tab1, text="Check Live Proxy")
 notebook.add(tab2, text="Lọc Proxy")
-notebook.add(tab3, text="Kiểm Tra Trùng Lặp")
-notebook.add(tab4, text="Mua Proxy và Liên Hệ")
-
+notebook.add(tab3, text="Công Cụ Xử Lý Chuỗi")
+notebook.add(tab4, text="Kiểm Tra Trùng Lặp")
+notebook.add(tab5, text="Kết Nối Proxy")
+notebook.add(tab6, text="Mua Proxy và Liên Hệ")
 
 # Tab 1: Kiểm tra Proxy - Đặt các widget cho tab này
 label = tk.Label(tab1, text="Nhập danh sách proxy định dạng IP:PORT:USER:PASS (mỗi dòng một proxy, chú ý xóa dấu cách thừa):", bg="#f0f0f0", fg="blue", font=("Arial", 13, "bold"))
 label.pack(padx=10, pady=10, anchor='w')
 
-text_area = scrolledtext.ScrolledText(tab1, height=10, width=75, font=("Arial", 13))
+text_area = scrolledtext.ScrolledText(tab1, height=12, width=85, font=("Arial", 13))
 text_area.pack(padx=10, pady=5)
 
 button = tk.Button(tab1, text="Kiểm tra", command=check_proxies, bg="green", fg="white", font=("Arial", 13, "bold"))
@@ -209,32 +261,160 @@ connectable_label.pack(padx=10, pady=5, anchor='w')
 non_connectable_label = tk.Label(result_frame, text="Proxy không thể kết nối: 0", bg="#f0f0f0", fg="red", font=("Arial", 13, "bold"))
 non_connectable_label.pack(padx=10, pady=5, anchor='w')
 
-connectable_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, width=45, height=10, bg="white", fg="black", font=("Arial", 13))
+connectable_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, width=45, height=17, bg="white", fg="black", font=("Arial", 13))
 connectable_text.pack(side='left', padx=10, pady=5, fill='both', expand=True)
 
-non_connectable_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, width=45, height=10, bg="white", fg="black", font=("Arial", 13))
+non_connectable_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, width=45, height=17, bg="white", fg="black", font=("Arial", 13))
 non_connectable_text.pack(side='right', padx=10, pady=5, fill='both', expand=True)
 
 
 # Tab 2: Extract & Format Proxies
 proxy_label = tk.Label(tab2, text="Nhập proxy muốn lọc (cách nhau bằng dấu cách hoặc tab):", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold"))
 proxy_label.pack(pady=10)
-proxy_text_box = scrolledtext.ScrolledText(tab2, height=10, width=75, font=("Arial", 12))
+proxy_text_box = scrolledtext.ScrolledText(tab2, height=15, width=85, font=("Arial", 12))
 proxy_text_box.pack(pady=10)
 process_button = tk.Button(tab2, text="Lọc Proxy", command=format_and_display_proxies, bg="green", fg="white", font=("Arial", 12, "bold"))
 process_button.pack(pady=10)
-output_label = tk.Label(tab2, text="Kết quả sau khi kiểm tra và lọc:", bg="#f0f0f0", fg="blue", font=("Arial", 12))
+output_label = tk.Label(tab2, text="Kết quả sau khi kiểm tra và lọc:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold"))
 output_label.pack(pady=10)
-output_text_box = scrolledtext.ScrolledText(tab2, height=10, width=75, font=("Arial", 12))
+output_text_box = scrolledtext.ScrolledText(tab2, height=15, width=85, font=("Arial", 12))
 output_text_box.pack(pady=10)
 
+# Tab 3: Công Cụ Xử Lý Chuỗi
 
 
-# Tạo Tab 3: Kiểm tra dòng trùng
+# Biến toàn cục để lưu vị trí tìm kiếm hiện tại
+current_find_index = tk.StringVar()
+current_find_index.set('1.0')
 
-# Các widget cho Tab 3
-# Tạo khung chứa cho hai ô nhập văn bản và kết quả
-input_frame = tk.Frame(tab3)
+def replace_text():
+    find_text = find_entry.get()
+    replace_text = replace_entry.get()
+    content = content_text.get("1.0", tk.END)
+    
+    if not find_text:
+        tk.messagebox.showwarning("Cảnh báo", "Vui lòng nhập từ khóa cần tìm!")
+        return
+    
+    start_pos = content_text.search(find_text, current_find_index.get(), tk.END)
+    if start_pos:
+        end_pos = f"{start_pos}+{len(find_text)}c"
+        content_text.delete(start_pos, end_pos)
+        content_text.insert(start_pos, replace_text)
+        
+        # Cập nhật vị trí tìm kiếm tiếp theo
+        next_pos = f"{start_pos}+{len(replace_text)}c"
+        current_find_index.set(next_pos)
+        
+        # Highlight từ vừa thay thế
+        content_text.tag_remove("highlight", "1.0", tk.END)
+        content_text.tag_add("highlight", start_pos, f"{start_pos}+{len(replace_text)}c")
+        content_text.tag_config("highlight", background="yellow")
+        
+        # Di chuyển con trỏ đến vị trí sau từ vừa thay thế
+        content_text.mark_set(tk.INSERT, next_pos)
+        content_text.see(tk.INSERT)
+    else:
+        current_find_index.set('1.0')
+        tk.messagebox.showinfo("Thông báo", "Không tìm thấy từ khóa!")
+
+def replace_all_text():
+    find_text = find_entry.get()
+    replace_text = replace_entry.get()
+    content = content_text.get("1.0", tk.END)
+    
+    if not find_text:
+        tk.messagebox.showwarning("Cảnh báo", "Vui lòng nhập từ khóa cần tìm!")
+        return
+    
+    new_content = content.replace(find_text, replace_text)
+    content_text.delete("1.0", tk.END)
+    content_text.insert(tk.END, new_content)
+    
+    # Đếm số lượng thay thế
+    replace_count = content.count(find_text)
+    
+    if replace_count > 0:
+        tk.messagebox.showinfo("Thông báo", f"Đã thay thế {replace_count} lần!")
+    else:
+        tk.messagebox.showinfo("Thông báo", "Không tìm thấy từ khóa!")
+    
+    current_find_index.set('1.0')
+
+
+def process_string():
+    start = start_entry.get()
+    end = end_entry.get()
+    content = content_text.get("1.0", tk.END).splitlines()
+    result = []
+    for line in content:
+        if line.strip():  # Chỉ xử lý các dòng không trống
+            result.append(f"{start}{line.strip()}{end}")
+    result_text_tab3.delete("1.0", tk.END)
+    result_text_tab3.insert(tk.END, '\n'.join(result))
+
+# Frame chính cho tất cả các công cụ xử lý chuỗi
+main_frame = tk.Frame(tab3, bg="#f0f0f0")
+main_frame.pack(pady=5, fill='both', expand=True)
+
+# Frame cho tìm và thay thế
+replace_frame = tk.Frame(main_frame, bg="#f0f0f0")
+replace_frame.pack(pady=(5, 25), fill='x')
+
+tk.Label(replace_frame, text="Tìm:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold")).pack(side='left', padx=(0, 5))
+find_entry = tk.Entry(replace_frame, width=20, font=("Arial", 12))
+find_entry.pack(side='left', padx=(0, 10), fill='x', expand=True)
+
+tk.Label(replace_frame, text="Thay thế:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold")).pack(side='left', padx=(0, 5))
+replace_entry = tk.Entry(replace_frame, width=20, font=("Arial", 12))
+replace_entry.pack(side='left', padx=(0, 10), fill='x', expand=True)
+
+replace_button = tk.Button(replace_frame, text="Thay thế", command=replace_text, bg="orange", fg="white", font=("Arial", 12, "bold"))
+replace_button.pack(side='left', padx=(0, 5))
+
+replace_all_button = tk.Button(replace_frame, text="Thay thế tất cả", command=replace_all_text, bg="red", fg="white", font=("Arial", 12, "bold"))
+replace_all_button.pack(side='left')
+
+# Frame cho ghép đầu dòng và cuối dòng
+append_frame = tk.Frame(main_frame, bg="#f0f0f0")
+append_frame.pack(pady=(0, 5), fill='x')
+
+tk.Label(append_frame, text="Ghép vào đầu dòng:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold")).pack(side='left', padx=(0, 5))
+start_entry = tk.Entry(append_frame, width=30, font=("Arial", 12))
+start_entry.pack(side='left', padx=(0, 10), fill='x', expand=True)
+
+tk.Label(append_frame, text="Ghép vào cuối dòng:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold")).pack(side='left', padx=(0, 5))
+end_entry = tk.Entry(append_frame, width=30, font=("Arial", 12))
+end_entry.pack(side='left', fill='x', expand=True)
+
+# Frame cho nhãn "Nội dung cần xử lý"
+content_label_frame = tk.Frame(main_frame, bg="#f0f0f0")
+content_label_frame.pack(fill='x', pady=(5, 0))
+tk.Label(content_label_frame, text="Nội dung cần xử lý:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold")).pack(expand=True)
+
+# Nội dung cần xử lý
+content_text = scrolledtext.ScrolledText(main_frame, height=14, width=85, font=("Arial", 12))
+content_text.pack(pady=(0, 5))
+
+# Nút bắt đầu ghép
+append_button = tk.Button(main_frame, text="Bắt đầu ghép", command=process_string, bg="green", fg="white", font=("Arial", 12, "bold"))
+append_button.pack(pady=(0, 5))
+
+# Frame cho nhãn "Kết quả"
+result_label_frame = tk.Frame(main_frame, bg="#f0f0f0")
+result_label_frame.pack(fill='x', pady=(5, 0))
+tk.Label(result_label_frame, text="Kết quả:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold")).pack(expand=True)
+
+# Kết quả
+result_text_tab3 = scrolledtext.ScrolledText(main_frame, height=14, width=85, font=("Arial", 12))
+result_text_tab3.pack(pady=(0, 5))
+
+# Tạo Tab 4: Kiểm tra dòng trùng
+
+# Tab 4: Kiểm Tra Trùng Lặp
+
+# Các widget cho Tab 4
+input_frame = tk.Frame(tab4)
 input_frame.pack(fill="x", padx=5, pady=5)
 
 # Ô nhập văn bản bên trái
@@ -246,40 +426,19 @@ right_text_entry = scrolledtext.ScrolledText(input_frame, height=18, width=50, f
 right_text_entry.pack(side="right", padx=(5, 0), expand=True)
 
 # Nút kiểm tra và xóa các dòng trùng
-check_button = tk.Button(tab3, text="Kiểm tra Dòng Trùng",  command=check_duplicates, bg="green", fg="white", font=("Arial", 12, "bold"))
+check_button = tk.Button(tab4, text="Kiểm tra Dòng Trùng", command=check_duplicates, bg="green", fg="white", font=("Arial", 12, "bold"))
 check_button.pack(pady=(5, 0))
 
-remove_duplicates_button = tk.Button(tab3, text="Xóa Các Dòng Trùng", command=remove_duplicates, bg="red", fg="white", font=("Arial", 12, "bold"))
+remove_duplicates_button = tk.Button(tab4, text="Xóa Các Dòng Trùng", command=remove_duplicates, bg="red", fg="white", font=("Arial", 12, "bold"))
 remove_duplicates_button.pack(pady=5)
 
-# Hiển thị kết quả
-result_text = scrolledtext.ScrolledText(tab3, height=11, width=80, font=("Arial", 12))
-result_text.pack(padx=5, pady=(5, 0))
-
-
-# Tạo tab 4
-# Widget cho Tab 4
-contact_label = tk.Label(tab4, text="Để mua proxy hoặc liên hệ, vui lòng truy cập các liên kết dưới đây:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold"))
-contact_label.pack(pady=10)
-
-# Hàm mở liên kết trong trình duyệt mặc định
-def open_link(link):
-    webbrowser.open_new_tab(link)
-
-# Nút để mở liên kết mua proxy
-buy_proxy_button = tk.Button(tab4, text="Mua Proxy", command=lambda: open_link("https://bestproxy.vn/?a=login"), bg="blue", fg="white", font=("Arial", 12, "bold"))
-buy_proxy_button.pack(pady=5)
-
-# Nút để mở liên kết liên hệ
-contact_button = tk.Button(tab4, text="Liên Hệ", command=lambda: open_link("https://t.me/bedaudone1"), bg="green", fg="white", font=("Arial", 12, "bold"))
-contact_button.pack(pady=5)
+# Hiển thị kết quả cho Tab 4
+result_text_tab4 = scrolledtext.ScrolledText(tab4, height=18, width=80, font=("Arial", 12))
+result_text_tab4.pack(padx=5, pady=(5, 0))
 
 
 
-
-# Tạo Tab 5: Kết Nối Proxy
-tab5 = ttk.Frame(notebook)
-notebook.add(tab5, text="Kết Nối Proxy")
+# Tab 5: Kết nối Proxy
 
 def remove_spaces_tabs(event):
     # Xóa tất cả dấu tab và dấu cách từ chuỗi nhập vào
@@ -429,6 +588,25 @@ city_label.pack()
 
 # Liên kết sự kiện với Entry widget để loại bỏ dấu tab và dấu cách
 proxy_entry.bind('<KeyRelease>', remove_spaces_tabs)
+
+
+# Tạo tab 6
+# Widget cho Tab 6
+contact_label = tk.Label(tab6, text="Để mua proxy hoặc liên hệ, vui lòng truy cập các liên kết dưới đây:", bg="#f0f0f0", fg="blue", font=("Arial", 12, "bold"))
+contact_label.pack(pady=10)
+
+# Hàm mở liên kết trong trình duyệt mặc định
+def open_link(link):
+    webbrowser.open_new_tab(link)
+
+# Nút để mở liên kết mua proxy
+buy_proxy_button = tk.Button(tab6, text="Mua Proxy", command=lambda: open_link("https://bestproxy.vn/?a=login"), bg="blue", fg="white", font=("Arial", 12, "bold"))
+buy_proxy_button.pack(pady=5)
+
+# Nút để mở liên kết liên hệ
+contact_button = tk.Button(tab6, text="Liên Hệ", command=lambda: open_link("https://t.me/bedaudone1"), bg="green", fg="white", font=("Arial", 12, "bold"))
+contact_button.pack(pady=5)
+
 
 
 
